@@ -29,7 +29,7 @@ Emotion-Based-Music-Player
 
 Clone the repository
 
-git clone https://github.com/yourusername/Emotion-Based-Music-Player.git
+git clone https://github.com/adarshaT12/Emotion-Based-Music-Player.git
 
 Install dependencies
 

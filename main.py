@@ -1,80 +1,94 @@
 import cv2
-import numpy as np
 from fer import FER
-import pygame
+import webbrowser
 import time
 
-# Initialize music player
-pygame.mixer.init()
+# -------------------------------
+# YouTube Songs / Playlists
+# -------------------------------
 
-songs = {
-    "happy": "songs/happy.mp3",
-    "sad": "songs/sad.mp3",
-    "angry": "songs/angry.mp3",
-    "surprise": "songs/surprise.mp3"
+emotion_songs = {
+    "happy": "https://www.youtube.com/watch?v=UPkMkIOzej8",
+    "sad": "https://www.youtube.com/watch?v=s7FTAxw37hk",
+    "angry": "https://www.youtube.com/watch?v=hTWKbfoikeg",
+    "surprise": "https://www.youtube.com/watch?v=CpNBODqTA34"
 }
 
-face_cascade = cv2.CascadeClassifier(
-    cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-)
+# -------------------------------
+# Initialize Emotion Detector
+# -------------------------------
 
-emotion_detector = FER()
+detector = FER(mtcnn=True)
+
+# -------------------------------
+# Initialize Webcam
+# -------------------------------
 
 cap = cv2.VideoCapture(0)
 
 current_emotion = None
+last_open_time = 0
+cooldown = 10   # seconds before opening another song
+
+print("Emotion Based Music Player Started")
+print("Press Q to exit")
 
 while True:
+
     ret, frame = cap.read()
+
     if not ret:
         break
 
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    # Detect emotions in frame
+    results = detector.detect_emotions(frame)
 
-    faces = face_cascade.detectMultiScale(
-        gray,
-        scaleFactor=1.1,
-        minNeighbors=5,
-        minSize=(30, 30)
-    )
+    for face in results:
 
-    for (x, y, w, h) in faces:
+        x, y, w, h = face["box"]
 
+        # Draw rectangle around face
         cv2.rectangle(frame,(x,y),(x+w,y+h),(255,0,0),2)
 
-        face = frame[y:y+h, x:x+w]
+        # Get dominant emotion
+        emotion = max(face["emotions"], key=face["emotions"].get)
 
-        result = emotion_detector.detect_emotions(face)
+        # Display emotion on screen
+        cv2.putText(
+            frame,
+            emotion.upper(),
+            (x, y-10),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.9,
+            (0,255,0),
+            2
+        )
 
-        if result:
+        # Open YouTube song
+        if emotion in emotion_songs:
 
-            emotion = max(
-                result[0]["emotions"],
-                key=result[0]["emotions"].get
-            )
+            if emotion != current_emotion and time.time() - last_open_time > cooldown:
 
-            cv2.putText(
-                frame,
-                emotion,
-                (x, y-10),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.9,
-                (0,0,255),
-                2
-            )
+                url = emotion_songs[emotion]
 
-            if emotion in songs and current_emotion != emotion:
+                print("Detected Emotion:", emotion)
+                print("Opening Song:", url)
 
-                pygame.mixer.music.load(songs[emotion])
-                pygame.mixer.music.play()
+                webbrowser.open(url)
 
                 current_emotion = emotion
+                last_open_time = time.time()
 
+    # Show webcam window
     cv2.imshow("Emotion Based Music Player", frame)
 
+    # Press Q to quit
     if cv2.waitKey(1) & 0xFF == ord("q"):
         break
 
+# -------------------------------
+# Release resources
+# -------------------------------
+
 cap.release()
 cv2.destroyAllWindows()
-pygame.mixer.music.stop()

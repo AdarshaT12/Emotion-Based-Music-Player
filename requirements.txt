@@ -1,4 +1,4 @@
+
 opencv-python
-numpy
 fer
-pygame
+mtcnn
